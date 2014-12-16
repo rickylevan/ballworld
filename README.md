@@ -11,3 +11,8 @@ FIXME
 Copyright © 2014 FIXME
 
 Distributed under the Eclipse Public License, the same as Clojure.
+=======
+ballworld
+=========
+
+Re-implementation of ballworld in Clojure
