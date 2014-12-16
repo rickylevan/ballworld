@@ -22,22 +22,32 @@
 
 
 (def default-radius 30)
-(def ball1 (atom (Ball. (Point. 80 80) (Point. 6.0 2.7) default-radius)))
-(def ball2 (atom (Ball. (Point. 120 70) (Point. 5.0 3.7) default-radius)))
+
 
 (defn paint-ball [ball g] 
   (.fillOval g (- (:x (:pos @ball)) (:rad @ball)) 
                (- (:y (:pos @ball)) (:rad @ball))
                (* 2 (:rad @ball)) 
                (* 2 (:rad @ball))))
-  
+
+
+
+(def ball1 (atom (Ball. (Point. 80 80) (Point. 6.0 2.7) default-radius)))
+(def ball2 (atom (Ball. (Point. 120 70) (Point. 5.0 3.7) default-radius)))
+(def ball3 (atom (Ball. (Point. 90 60) (Point. 7.3 4.5) default-radius)))
+(def balls [ball1 ball2 ball3])
+
 (def main-panel (proxy [JPanel] []
-           (paintComponent [g]
-             (proxy-super paintComponent g)
-             (.setColor g java.awt.Color/red)
-             (paint-ball ball1 g)
-             (.setColor g java.awt.Color/blue)
-             (paint-ball ball2 g))))
+         (paintComponent [g]
+           (proxy-super paintComponent g)
+           (.setColor g java.awt.Color/red)
+           (paint-ball ball1 g)
+           (.setColor g java.awt.Color/blue)
+           (paint-ball ball2 g)
+           (.setColor g java.awt.Color/green)
+           (paint-ball ball3 g))))
+  
+
 
 ;; Do Newton's first
 (defn move-straight [b] (swap! b assoc :pos (add-points (:pos @b) (:vel @b))))
@@ -105,6 +115,14 @@
 
 
 (defn -main []
+
+  ;; re-defining to try to get fresh balls with each -main run
+  ;;(def ball1 (atom (Ball. (Point. 80 80) (Point. 6.0 2.7) default-radius)))
+  ;;(def ball2 (atom (Ball. (Point. 120 70) (Point. 5.0 3.7) default-radius))) 
+  ;;(def ball3 (atom (Ball. (Point. 90 60) (Point. 7.3 4.5) default-radius))) 
+  ;;(def balls [ball1 ball2 ball3])
+
+
   (def main-frame (JFrame.))
   (doto main-frame
     (.setContentPane main-panel)
@@ -118,11 +136,12 @@
   (future (loop [] (refresh) (Thread/sleep 20) (recur)))
   ;; action loop
   (future (loop [] (if (time-flowing?)
-                     (do 
+                     ;;(for [ball balls] (do (update! ball))))
+                     (do
                        (update! ball1)
-                       (update! ball2)))
+                       (update! ball2)
+                       (update! ball3)))
                    (Thread/sleep 15)
-                   ;; (prn @ball)
                    (recur)))
 )
 
