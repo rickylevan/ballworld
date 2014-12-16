@@ -19,8 +19,6 @@
 (defn switch-timeflow! [] (swap! timeflow-bool (fn [b] (not b))))
 
 (defn flip-sign [x] (* -1 x))
-
-
 (def default-radius 30)
 
 
@@ -30,11 +28,9 @@
                (* 2 (:rad @ball)) 
                (* 2 (:rad @ball))))
 
-
-
 (def ball1 (atom (Ball. (Point. 80 80) (Point. 6.0 2.7) default-radius)))
 (def ball2 (atom (Ball. (Point. 120 70) (Point. 5.0 3.7) default-radius)))
-(def ball3 (atom (Ball. (Point. 90 60) (Point. 7.3 4.5) default-radius)))
+(def ball3 (atom (Ball. (Point. 90 60) (Point. 8.3 5.5) default-radius)))
 (def balls [ball1 ball2 ball3])
 
 (def main-panel (proxy [JPanel] []
@@ -47,8 +43,6 @@
            (.setColor g java.awt.Color/green)
            (paint-ball ball3 g))))
   
-
-
 ;; Do Newton's first
 (defn move-straight [b] (swap! b assoc :pos (add-points (:pos @b) (:vel @b))))
 
@@ -67,42 +61,37 @@
       (> (:y (:pos @ball)) (+ (:y shrunk-bounds) (:height shrunk-bounds)))    :bottom-bounce
       :else                                                                   :no-bounce)))
 
-     
+;; trying to stop this odd bug of a ball wiggling against the edge
+(def bump 5) 
+
 (defn no-bounce! [ball])
 (defn right-bounce! [ball]
   (do
     (let [old-vel (:vel @ball)]
       (swap! ball assoc :vel (Point. (flip-sign (:x old-vel)) (:y old-vel))))
     (let [dx (Math/abs (+ (:x (:pos @ball)) (:rad @ball) (- (.width (.getBounds main-panel)))))]
-      (swap! ball assoc :pos (Point. (- (:x (:pos @ball)) (* 2 dx)) (:y (:pos @ball)))))))
-    ;;(prn "right bounce function called!!!!!")))
+      (swap! ball assoc :pos (Point. (- (:x (:pos @ball)) (* 2 dx) bump) (:y (:pos @ball)))))))
 
 (defn bottom-bounce! [ball]
   (do
     (let [old-vel (:vel @ball)]
       (swap! ball assoc :vel (Point. (:x old-vel) (flip-sign (:y old-vel)))))
     (let [dy (Math/abs (+ (:y (:pos @ball)) (:rad @ball) (- (.height (.getBounds main-panel)))))]
-      (swap! ball assoc :pos (Point.  (:x (:pos @ball)) (- (:y (:pos @ball)) (* 2 dy)))))))
-    ;;(prn "bottom bounce function called!!!!!")))
-
-
+      (swap! ball assoc :pos (Point.  (:x (:pos @ball)) (- (:y (:pos @ball)) (* 2 dy) bump))))))
 
 (defn left-bounce! [ball]
   (do
     (let [old-vel (:vel @ball)]
       (swap! ball assoc :vel (Point. (flip-sign (:x old-vel)) (:y old-vel))))
     (let [dx (Math/abs (- (:x (:pos @ball)) (:rad @ball)))]
-      (swap! ball assoc :pos (Point. (+ (:x (:pos @ball)) (* 2 dx)) (:y (:pos @ball)))))))
-    ;;(prn "left bounce function called!!!!!")))
+      (swap! ball assoc :pos (Point. (+ (:x (:pos @ball)) (* 2 dx) bump) (:y (:pos @ball)))))))
 
 (defn top-bounce! [ball]
   (do
     (let [old-vel (:vel @ball)]
       (swap! ball assoc :vel (Point. (:x old-vel) (flip-sign (:y old-vel)))))
     (let [dy (Math/abs (- (:y (:pos @ball)) (:rad @ball)))]
-      (swap! ball assoc :pos (Point. (:x (:pos @ball)) (+ (:y (:pos @ball) (* 2 dy))))))))
-    ;;(prn "top bounce function called!!!!!")))
-
+      (swap! ball assoc :pos (Point. (:x (:pos @ball)) (+ (:y (:pos @ball) (* 2 dy)) bump))))))
 
 (def bounce-fun-map
   {:right-bounce right-bounce!, :left-bounce left-bounce!, :top-bounce top-bounce!,
@@ -115,13 +104,6 @@
 
 
 (defn -main []
-
-  ;; re-defining to try to get fresh balls with each -main run
-  ;;(def ball1 (atom (Ball. (Point. 80 80) (Point. 6.0 2.7) default-radius)))
-  ;;(def ball2 (atom (Ball. (Point. 120 70) (Point. 5.0 3.7) default-radius))) 
-  ;;(def ball3 (atom (Ball. (Point. 90 60) (Point. 7.3 4.5) default-radius))) 
-  ;;(def balls [ball1 ball2 ball3])
-
 
   (def main-frame (JFrame.))
   (doto main-frame
