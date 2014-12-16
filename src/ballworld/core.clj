@@ -1,7 +1,6 @@
 (ns ballworld.core
   (:require [seesaw [keymap :as skm] [keystroke :as sks] [core :refer :all]])
   (:require [clojure.core.matrix :as m])
-  (:require [incanter [core :as ic] [charts :as ch]])
   (:require [clojure.java [browse :as b] [javadoc :as j]])
   (:import  [javax.swing JButton JFrame JOptionPane JPanel])
   (:import  [java.awt.event ActionListener KeyListener KeyEvent]))
@@ -11,6 +10,8 @@
 (defn add-points [p1 p2] 
   (Point. (+ (:x p1) (:x p2)) (+ (:y p1) (:y p2))))
 
+;; playing with time primitives. These will be useful later
+;; in adding control features
 (def timeflow-bool (atom false))
 (defn time-flowing? [] @timeflow-bool)
 (defn resume-timeflow! [] (swap! timeflow-bool (fn [_] true)))
@@ -33,6 +34,7 @@
 (def ball3 (atom (Ball. (Point. 90 60) (Point. 8.3 5.5) default-radius)))
 (def balls [ball1 ball2 ball3])
 
+;; not sure how to safely iterate over all the balls at once
 (def main-panel (proxy [JPanel] []
          (paintComponent [g]
            (proxy-super paintComponent g)
@@ -64,7 +66,9 @@
 ;; trying to stop this odd bug of a ball wiggling against the edge
 (def bump 5) 
 
+;; There should be a way of generalizing these *-bounce! commands. Very similar ideas
 (defn no-bounce! [ball])
+
 (defn right-bounce! [ball]
   (do
     (let [old-vel (:vel @ball)]
