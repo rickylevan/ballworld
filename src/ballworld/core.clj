@@ -24,8 +24,6 @@
 (def default-radius 30)
 (def ball1 (atom (Ball. (Point. 80 80) (Point. 6.0 2.7) default-radius)))
 (def ball2 (atom (Ball. (Point. 120 70) (Point. 5.0 3.7) default-radius)))
-;;(def ball3 (atom (Ball. (Point. 90 60) (Point. 3.2 8.5) default-radius)))
-;;(def balls [ball1 ball2 ball3])
 
 (defn paint-ball [ball g] 
   (.fillOval g (- (:x (:pos @ball)) (:rad @ball)) 
