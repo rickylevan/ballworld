@@ -29,9 +29,9 @@
                (* 2 (:rad @ball)) 
                (* 2 (:rad @ball))))
 
-(def ball1 (atom (Ball. (Point. 80 80) (Point. 6.0 2.7) default-radius)))
-(def ball2 (atom (Ball. (Point. 120 70) (Point. 5.0 3.7) default-radius)))
-(def ball3 (atom (Ball. (Point. 90 60) (Point. 8.3 5.5) default-radius)))
+(def ball1 (atom (Ball. (Point. 80 80) (Point. 8.0 3.7) default-radius)))
+(def ball2 (atom (Ball. (Point. 120 70) (Point. 7.0 4.7) default-radius)))
+(def ball3 (atom (Ball. (Point. 90 60) (Point. 10.0 7.5) default-radius)))
 (def balls [ball1 ball2 ball3])
 
 ;; not sure how to safely iterate over all the balls at once
@@ -44,6 +44,16 @@
            (paint-ball ball2 g)
            (.setColor g java.awt.Color/green)
            (paint-ball ball3 g))))
+
+(def text-field 
+  (doto (javax.swing.JTextField.)
+    (.setText "Example Text")
+    (.setColumns 20)))
+
+(def control-panel
+  (doto (JPanel.)
+    (.setBackground java.awt.Color/lightGray)
+    (.add text-field)))
   
 ;; Do Newton's first
 (defn move-straight [b] (swap! b assoc :pos (add-points (:pos @b) (:vel @b))))
@@ -111,7 +121,8 @@
 
   (def main-frame (JFrame.))
   (doto main-frame
-    (.setContentPane main-panel)
+    (.add control-panel java.awt.BorderLayout/NORTH)
+    (.add main-panel java.awt.BorderLayout/CENTER)
     (.setSize 400 400)
     (.show))
 
