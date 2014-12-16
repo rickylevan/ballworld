@@ -56,7 +56,7 @@
     (.add text-field)))
   
 ;; Do Newton's first
-(defn move-straight [b] (swap! b assoc :pos (add-points (:pos @b) (:vel @b))))
+(defn move-straight! [b] (swap! b assoc :pos (add-points (:pos @b) (:vel @b))))
 
 ;; Find if part (or all) of the ball is outside of the panel. Return the side
 ;; it has fallen off, or nil if it is fully inside the panel
@@ -107,14 +107,16 @@
     (let [dy (Math/abs (- (:y (:pos @ball)) (:rad @ball)))]
       (swap! ball assoc :pos (Point. (:x (:pos @ball)) (+ (:y (:pos @ball) (* 2 dy)) bump))))))
 
-(def bounce-fun-map
-  {:right-bounce right-bounce!, :left-bounce left-bounce!, :top-bounce top-bounce!,
-   :bottom-bounce bottom-bounce!, :no-bounce no-bounce!})
+(defn bounce! [ball]
+  (let [bounce-fun-map 
+        {:right-bounce right-bounce!, :left-bounce left-bounce!, :top-bounce top-bounce!,
+         :bottom-bounce bottom-bounce!, :no-bounce no-bounce!}]
+      ((bounce-fun-map (get-bounce-state ball)) ball)))
 
 (defn update! [ball]
   (dosync 
-    (move-straight ball)
-    ((bounce-fun-map (get-bounce-state ball)) ball)))
+    (move-straight! ball)
+    (bounce! ball)))
 
 
 (defn -main []
