@@ -32,6 +32,14 @@
                (* 2 (:rad @ball)) 
                (* 2 (:rad @ball))))
 
+(defn rand-color [] 
+  (let [rand-val (fn [] (int (* 256 (Math/random))))]
+    (Color. (rand-val) (rand-val) (rand-val))))
+
+(defn rand-vel []
+  ;; right now numbers are heuristic. No units
+  (- 12 (* 24 (Math/random))))
+
 (def ball1 (atom (Ball. (Point. 80 80) (Point. 8.0 3.7) default-radius Color/red)))
 (def ball2 (atom (Ball. (Point. 120 70) (Point. 7.0 4.7) default-radius Color/blue)))
 (def ball3 (atom (Ball. (Point. 90 60) (Point. 10.0 7.5) default-radius Color/green)))
@@ -40,7 +48,8 @@
 
 (defn add-ball! []
   (swap! balls conj
-         (atom (Ball. (Point. 80 80) (Point. 8.0 3.7) default-radius Color/pink))))
+         (atom (Ball. (Point. 80 80) (Point. (rand-vel) (rand-vel)) 
+                      default-radius (rand-color)))))
 
 (def main-panel (proxy [JPanel] []
          (paintComponent [g]
@@ -49,21 +58,13 @@
              (.setColor g (:color @ball))
              (paint-ball ball g)))))
 
-;;(def text-field 
-;;  (doto (javax.swing.JTextField.)
-;;    (.setText "Example Text")
-;;    (.setColumns 20)))
 
 (def pause-button
   (doto (JButton. "Pause")
     (.addActionListener
       (proxy [ActionListener] []
         (actionPerformed [e]
-          (doseq []
-            (switch-timeflow!)))))))
-            ;;(if (time-flowing?)
-            ;;  (.setText pause-button "Pause")
-            ;;  (.setText pause-button "Unpause"))))))))
+          (switch-timeflow!))))))
 
 (def add-ball-button
   (doto (JButton. "Add Ball")
