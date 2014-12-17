@@ -58,48 +58,29 @@
 ;; Do Newton's first
 (defn move-straight! [b] (swap! b assoc :pos (add-points (:pos @b) (:vel @b))))
 
-;; Find if part (or all) of the ball is outside of the panel. Return the side
-;; it has fallen off, or nil if it is fully inside the panel
-(defn get-bounce-state [ball]
-  (let [shrunk-bounds
-        {:x      (:rad @ball)
-         :y      (:rad @ball)
-         :width  (- (.width (.getBounds main-panel))  (* 2 (:rad @ball)))
-         :height (- (.height (.getBounds main-panel)) (* 2 (:rad @ball)))}]
-    (cond 
-      (> (:x (:pos @ball)) (+ (:x shrunk-bounds) (:width shrunk-bounds)))     :right-bounce
-      (< (:x (:pos @ball)) (:x shrunk-bounds))                                :left-bounce
-      (< (:y (:pos @ball)) (:y shrunk-bounds))                                :top-bounce
-      (> (:y (:pos @ball)) (+ (:y shrunk-bounds) (:height shrunk-bounds)))    :bottom-bounce
-      :else                                                                   :no-bounce)))
-
 ;; trying to stop this odd bug of a ball wiggling against the edge
 (def bump 5) 
 
 ;; There should be a way of generalizing these *-bounce! commands. Very similar ideas
 (defn no-bounce! [ball])
-
 (defn right-bounce! [ball]
   (do
     (let [old-vel (:vel @ball)]
       (swap! ball assoc :vel (Point. (flip-sign (:x old-vel)) (:y old-vel))))
     (let [dx (Math/abs (+ (:x (:pos @ball)) (:rad @ball) (- (.width (.getBounds main-panel)))))]
       (swap! ball assoc :pos (Point. (- (:x (:pos @ball)) (* 2 dx) bump) (:y (:pos @ball)))))))
-
 (defn bottom-bounce! [ball]
   (do
     (let [old-vel (:vel @ball)]
       (swap! ball assoc :vel (Point. (:x old-vel) (flip-sign (:y old-vel)))))
     (let [dy (Math/abs (+ (:y (:pos @ball)) (:rad @ball) (- (.height (.getBounds main-panel)))))]
       (swap! ball assoc :pos (Point.  (:x (:pos @ball)) (- (:y (:pos @ball)) (* 2 dy) bump))))))
-
 (defn left-bounce! [ball]
   (do
     (let [old-vel (:vel @ball)]
       (swap! ball assoc :vel (Point. (flip-sign (:x old-vel)) (:y old-vel))))
     (let [dx (Math/abs (- (:x (:pos @ball)) (:rad @ball)))]
       (swap! ball assoc :pos (Point. (+ (:x (:pos @ball)) (* 2 dx) bump) (:y (:pos @ball)))))))
-
 (defn top-bounce! [ball]
   (do
     (let [old-vel (:vel @ball)]
@@ -107,11 +88,23 @@
     (let [dy (Math/abs (- (:y (:pos @ball)) (:rad @ball)))]
       (swap! ball assoc :pos (Point. (:x (:pos @ball)) (+ (:y (:pos @ball) (* 2 dy)) bump))))))
 
+;; Find if part (or all) of the ball is outside of the panel. Return the side
+;; it has fallen off, or nil if it is fully inside the panel
+(defn get-bounce-fun [ball]
+  (let [shrunk-bounds
+        {:x      (:rad @ball)
+         :y      (:rad @ball)
+         :width  (- (.width (.getBounds main-panel))  (* 2 (:rad @ball)))
+         :height (- (.height (.getBounds main-panel)) (* 2 (:rad @ball)))}]
+    (cond 
+      (> (:x (:pos @ball)) (+ (:x shrunk-bounds) (:width shrunk-bounds)))     right-bounce!
+      (< (:x (:pos @ball)) (:x shrunk-bounds))                                left-bounce!
+      (< (:y (:pos @ball)) (:y shrunk-bounds))                                top-bounce!
+      (> (:y (:pos @ball)) (+ (:y shrunk-bounds) (:height shrunk-bounds)))    bottom-bounce!
+      :else                                                                   no-bounce!)))
+
 (defn bounce! [ball]
-  (let [bounce-fun-map 
-        {:right-bounce right-bounce!, :left-bounce left-bounce!, :top-bounce top-bounce!,
-         :bottom-bounce bottom-bounce!, :no-bounce no-bounce!}]
-      ((bounce-fun-map (get-bounce-state ball)) ball)))
+  ((get-bounce-fun ball) ball))
 
 (defn update! [ball]
   (dosync 
@@ -127,7 +120,6 @@
     (.add main-panel java.awt.BorderLayout/CENTER)
     (.setSize 400 400)
     (.show))
-
   (defn refresh [] (javax.swing.SwingUtilities/invokeLater #(.repaint main-panel)))
   (start-timeflow!)
 
