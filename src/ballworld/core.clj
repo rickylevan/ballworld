@@ -3,7 +3,10 @@
   (:require [clojure.core.matrix :as m])
   (:require [clojure.java [browse :as b] [javadoc :as j]])
   (:import  [javax.swing JButton JFrame JOptionPane JPanel])
-  (:import  [java.awt.event ActionListener KeyListener KeyEvent]))
+  (:import  [java.awt.event ActionListener KeyListener KeyEvent])
+  (:import  [java.awt.Color]))
+
+
 
 (defrecord Point [x y])
 (defrecord Ball [pos vel rad])
@@ -33,27 +36,36 @@
 (def ball2 (atom (Ball. (Point. 120 70) (Point. 7.0 4.7) default-radius)))
 (def ball3 (atom (Ball. (Point. 90 60) (Point. 10.0 7.5) default-radius)))
 (def balls [ball1 ball2 ball3])
+(def ball-color-map (zipmap balls [Color/red Color/blue Color/green]))
 
-;; not sure how to safely iterate over all the balls at once
 (def main-panel (proxy [JPanel] []
          (paintComponent [g]
            (proxy-super paintComponent g)
-           (.setColor g java.awt.Color/red)
-           (paint-ball ball1 g)
-           (.setColor g java.awt.Color/blue)
-           (paint-ball ball2 g)
-           (.setColor g java.awt.Color/green)
-           (paint-ball ball3 g))))
+           (doseq [ball balls]
+             (.setColor g (ball-color-map ball))
+             (paint-ball ball g)))))
 
-(def text-field 
-  (doto (javax.swing.JTextField.)
-    (.setText "Example Text")
-    (.setColumns 20)))
+;;(def text-field 
+;;  (doto (javax.swing.JTextField.)
+;;    (.setText "Example Text")
+;;    (.setColumns 20)))
+
+(def pause-button
+  (doto (JButton. "Pause")
+    (.addActionListener
+      (proxy [ActionListener] []
+        (actionPerformed [e]
+          (doseq []
+            (switch-timeflow!)))))))
+            ;;(if (time-flowing?)
+            ;;  (.setText pause-button "Pause")
+            ;;  (.setText pause-button "Unpause"))))))))
+
 
 (def control-panel
   (doto (JPanel.)
     (.setBackground java.awt.Color/lightGray)
-    (.add text-field)))
+    (.add pause-button)))
   
 ;; Do Newton's first
 (defn move-straight! [b] (swap! b assoc :pos (add-points (:pos @b) (:vel @b))))
@@ -114,6 +126,10 @@
 
 (defn -main []
 
+  ;; http://stackoverflow.com/questions/3636364/can-i-clean-the-repl
+  ;; trying to purge existing state for a fresh run with a new -main call
+  ;; (map #(ns-unmap *ns* %) (keys (ns-interns *ns*))) 
+
   (def main-frame (JFrame.))
   (doto main-frame
     (.add control-panel java.awt.BorderLayout/NORTH)
@@ -127,11 +143,11 @@
   (future (loop [] (refresh) (Thread/sleep 20) (recur)))
   ;; action loop
   (future (loop [] (if (time-flowing?)
-                     ;;(for [ball balls] (do (update! ball))))
-                     (do
-                       (update! ball1)
-                       (update! ball2)
-                       (update! ball3)))
+                     (doseq [ball balls] (update! ball)))
+                     ;;(do
+                      ;; (update! ball1)
+                       ;;(update! ball2)
+                       ;;(update! ball3)))
                    (Thread/sleep 15)
                    (recur)))
 )
