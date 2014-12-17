@@ -51,6 +51,9 @@
          (atom (Ball. (Point. 80 80) (Point. (rand-vel) (rand-vel)) 
                       default-radius (rand-color)))))
 
+(defn clear-balls! []
+  (swap! balls empty))
+
 (def main-panel (proxy [JPanel] []
          (paintComponent [g]
            (proxy-super paintComponent g)
@@ -73,11 +76,19 @@
         (actionPerformed [e]
           (add-ball!))))))
 
+(def clear-balls-button
+  (doto (JButton. "Clear balls")
+    (.addActionListener
+      (proxy [ActionListener] []
+        (actionPerformed [e]
+          (clear-balls!))))))
+
 
 (def control-panel
   (doto (JPanel.)
     (.setBackground java.awt.Color/lightGray)
     (.add add-ball-button)
+    (.add clear-balls-button)
     (.add pause-button)))
   
 ;; Do Newton's first
@@ -153,7 +164,7 @@
   (start-timeflow!)
 
   ;; refresh loop
-  (future (loop [] (refresh) (Thread/sleep 20) (recur)))
+  (future (loop [] (refresh) (Thread/sleep 30) (recur)))
   ;; action loop
   (future (loop [] (if (time-flowing?)
                      (doseq [ball @balls] (update! ball)))
