@@ -9,7 +9,7 @@
 
 
 (defrecord Point [x y])
-(defrecord Ball [pos vel rad])
+(defrecord Ball [pos vel rad color])
 (defn add-points [p1 p2] 
   (Point. (+ (:x p1) (:x p2)) (+ (:y p1) (:y p2))))
 
@@ -32,17 +32,21 @@
                (* 2 (:rad @ball)) 
                (* 2 (:rad @ball))))
 
-(def ball1 (atom (Ball. (Point. 80 80) (Point. 8.0 3.7) default-radius)))
-(def ball2 (atom (Ball. (Point. 120 70) (Point. 7.0 4.7) default-radius)))
-(def ball3 (atom (Ball. (Point. 90 60) (Point. 10.0 7.5) default-radius)))
-(def balls [ball1 ball2 ball3])
-(def ball-color-map (zipmap balls [Color/red Color/blue Color/green]))
+(def ball1 (atom (Ball. (Point. 80 80) (Point. 8.0 3.7) default-radius Color/red)))
+(def ball2 (atom (Ball. (Point. 120 70) (Point. 7.0 4.7) default-radius Color/blue)))
+(def ball3 (atom (Ball. (Point. 90 60) (Point. 10.0 7.5) default-radius Color/green)))
+(def balls (atom [ball1 ball2 ball3]))
+
+
+(defn add-ball! []
+  (swap! balls conj
+         (atom (Ball. (Point. 80 80) (Point. 8.0 3.7) default-radius Color/pink))))
 
 (def main-panel (proxy [JPanel] []
          (paintComponent [g]
            (proxy-super paintComponent g)
-           (doseq [ball balls]
-             (.setColor g (ball-color-map ball))
+           (doseq [ball @balls]
+             (.setColor g (:color @ball))
              (paint-ball ball g)))))
 
 ;;(def text-field 
@@ -61,10 +65,18 @@
             ;;  (.setText pause-button "Pause")
             ;;  (.setText pause-button "Unpause"))))))))
 
+(def add-ball-button
+  (doto (JButton. "Add Ball")
+    (.addActionListener
+      (proxy [ActionListener] []
+        (actionPerformed [e]
+          (add-ball!))))))
+
 
 (def control-panel
   (doto (JPanel.)
     (.setBackground java.awt.Color/lightGray)
+    (.add add-ball-button)
     (.add pause-button)))
   
 ;; Do Newton's first
@@ -143,7 +155,7 @@
   (future (loop [] (refresh) (Thread/sleep 20) (recur)))
   ;; action loop
   (future (loop [] (if (time-flowing?)
-                     (doseq [ball balls] (update! ball)))
+                     (doseq [ball @balls] (update! ball)))
                      ;;(do
                       ;; (update! ball1)
                        ;;(update! ball2)
