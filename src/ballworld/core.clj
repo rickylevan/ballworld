@@ -1,7 +1,8 @@
 (ns ballworld.core
-  (:import [javax.swing JButton JFrame JPanel])
-  (:import java.awt.event.ActionListener)
-  (:import java.awt.Color))
+  (:require [clojure.core.matrix :as m])
+  (:import  [javax.swing JButton JFrame JPanel])
+  (:import  java.awt.event.ActionListener)
+  (:import  java.awt.Color))
 
 ;; http://stackoverflow.com/questions/3636364/can-i-clean-the-repl
 ;; trying to purge existing state for a fresh run with a new -main call
@@ -21,14 +22,12 @@
 
 ;; helpers for color shifting
 (def time-period 3)
-(def time-counter-state (atom 0))
+(def time-counter (atom 0))
 
 (defn flip-sign [x] (* -1 x))
 (defn add-points [p1 p2] 
   (Point. (+ (:x p1) (:x p2)) (+ (:y p1) (:y p2))))
 (def default-radius 30)
-
-
 
 (defn rand-color [] 
   (let [rand-val (fn [] (int (* 256 (Math/random))))]
@@ -53,7 +52,7 @@
 (defn add-ball! []
   (swap! balls conj
          (atom (Ball. (Point. 80 80) (Point. (rand-vel) (rand-vel)) 
-                      default-radius (rand-color)))))
+                  default-radius (rand-color)))))
 
 (defn clear-balls! []
   (swap! balls empty))
@@ -73,7 +72,7 @@
 
 ;; Change color of ball, at some period n * thread sleep time
 (defn move-color-shift! [b]
-  (if (= 0 @time-counter-state)
+  (if (= 0 @time-counter)
     (swap! b assoc :color (rand-color))))
 
 ;; buttons
@@ -197,19 +196,17 @@
   (.add main-panel java.awt.BorderLayout/CENTER)
   (.setSize 600 600))
 
-
-
-
 ;; main loops
 (defn refresh [] (javax.swing.SwingUtilities/invokeLater #(.repaint main-panel)))
 (defn start-gui-refresh-loop [] (loop [] (refresh) (Thread/sleep 30) (recur)))
-(defn start-action-loop [] (loop [] (if (time-flowing?)
-                   (do
-                    (doseq [ball @balls] (update! ball))
-                    ;; circle time steps mod n --- used to slow color flashing
-                    (swap! time-counter-state #(mod (inc %) time-period))))
-                 (Thread/sleep 15)
-                 (recur)))
+(defn start-action-loop [] 
+  (loop [] (if (time-flowing?)
+    (do
+      (doseq [ball @balls] (update! ball))
+      ;; loop time steps modulo time-period (to slow color flashing)
+      (swap! time-counter #(mod (inc %) time-period))))
+    (Thread/sleep 15)
+    (recur)))
 
 
 (defn -main []
@@ -217,6 +214,35 @@
   (start-timeflow!)
   (future (start-gui-refresh-loop))
   (future (start-action-loop)))
+
+
+
+;; defining collision primitives
+
+(defn get-delta-vel [this-ball that-ball]
+  (Point. 
+    (- (:x (:vel @that-ball)) (:x (:vel @this-ball)))
+    (- (:y (:vel @that-ball)) (:y (:vel @this-ball)))))
+
+(defn get-delta-pos [this-ball that-ball]
+  (Point.
+    (- (:x (:pos @that-ball)) (:x (:pos @this-ball)))
+    (- (:y (:pos @that-ball)) (:y (:pos @this-ball)))))
+
+;; real collision time. Negative, relative to detection time t = 0 
+(defn get-collision-time [this-ball that-ball]
+  (let [dvel (get-delta-vel this-ball that-ball)
+        dpos (get-delta-pos this-ball that-ball)
+        R      (+ (:rad @this-ball) (:rad @that-ball))]
+    ;; magic from the math
+    (let [physics-factor
+          (- (Math/pow (m/dot dvel dpos) 2)
+             (* (m/dot dvel dvel)
+                (- (m/dot dpos dpos) (Math/pow R 2))))]
+      )))
+
+
+
 
 
 
