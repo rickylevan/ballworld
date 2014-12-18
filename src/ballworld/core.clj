@@ -1,10 +1,7 @@
 (ns ballworld.core
-  (:require [seesaw [keymap :as skm] [keystroke :as sks] [core :refer :all]])
-  (:require [clojure.core.matrix :as m])
-  (:require [clojure.java [browse :as b] [javadoc :as j]])
-  (:import  [javax.swing JButton JFrame JOptionPane JPanel])
-  (:import  [java.awt.event ActionListener KeyListener KeyEvent])
-  (:import  [java.awt.Color]))
+  (:import [javax.swing JButton JFrame JPanel])
+  (:import java.awt.event.ActionListener)
+  (:import java.awt.Color))
 
 ;; http://stackoverflow.com/questions/3636364/can-i-clean-the-repl
 ;; trying to purge existing state for a fresh run with a new -main call
