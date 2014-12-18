@@ -45,6 +45,15 @@
 (def ball3 (atom (Ball. (Point. 90 60) (Point. 10.0 7.5) default-radius Color/green)))
 (def balls (atom [ball1 ball2 ball3]))
 
+;; store special motions for the balls to execute
+(def special-motions (atom #{}))
+
+;; toggle whether the balls obey some special motion
+(defn swap-in-special [f!]
+  (if (contains? @special-motions f!)
+    (swap! special-motions disj f!)
+    (swap! special-motions conj f!)))
+
 
 (defn add-ball! []
   (swap! balls conj
@@ -54,6 +63,21 @@
 (defn clear-balls! []
   (swap! balls empty))
 
+
+;; Move as instructed by Newton's first
+(defn move-straight! [b] (swap! b assoc :pos (add-points (:pos @b) (:vel @b))))
+
+;; Move in a curved path
+(defn move-curved! [b]
+  (let [theta (/ Math/PI 16)]
+    (swap! b assoc :vel
+      (Point. 
+        (- (* (:x (:vel @b)) (Math/cos theta))
+           (* (:y (:vel @b)) (Math/sin theta)))
+        (+ (* (:y (:vel @b)) (Math/cos theta))
+           (* (:x (:vel @b)) (Math/sin theta)))))))
+
+
 (def main-panel (proxy [JPanel] []
          (paintComponent [g]
            (proxy-super paintComponent g)
@@ -62,6 +86,20 @@
              (paint-ball ball g)))))
 
 
+(def add-ball-button
+  (doto (JButton. "Add")
+    (.addActionListener
+      (proxy [ActionListener] []
+        (actionPerformed [e]
+          (add-ball!))))))
+
+(def clear-balls-button
+  (doto (JButton. "Clear")
+    (.addActionListener
+      (proxy [ActionListener] []
+        (actionPerformed [e]
+          (clear-balls!))))))
+
 (def pause-button
   (doto (JButton. "Pause")
     (.addActionListener
@@ -69,30 +107,21 @@
         (actionPerformed [e]
           (switch-timeflow!))))))
 
-(def add-ball-button
-  (doto (JButton. "Add Ball")
+(def curve-balls-button
+  (doto (JButton. "Curve")
     (.addActionListener
       (proxy [ActionListener] []
         (actionPerformed [e]
-          (add-ball!))))))
-
-(def clear-balls-button
-  (doto (JButton. "Clear balls")
-    (.addActionListener
-      (proxy [ActionListener] []
-        (actionPerformed [e]
-          (clear-balls!))))))
-
+          (swap-in-special move-curved!))))))
 
 (def control-panel
   (doto (JPanel.)
     (.setBackground java.awt.Color/lightGray)
     (.add add-ball-button)
     (.add clear-balls-button)
+    (.add curve-balls-button)
     (.add pause-button)))
   
-;; Do Newton's first
-(defn move-straight! [b] (swap! b assoc :pos (add-points (:pos @b) (:vel @b))))
 
 ;; trying to stop this odd bug of a ball wiggling against the edge
 (def bump 5) 
@@ -145,6 +174,8 @@
 (defn update! [ball]
   (dosync 
     (move-straight! ball)
+    (doseq [sm! @special-motions]
+      (sm! ball))
     (bounce! ball)))
 
 
