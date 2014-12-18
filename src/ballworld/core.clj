@@ -43,13 +43,13 @@
 (def balls (atom #{ball1 ball2 ball3}))
 
 ;; store special motions for the balls to execute
-(def special-motions (atom #{}))
+(def special-behaviors (atom #{}))
 
 ;; toggle whether the balls obey some special motion
 (defn swap-in-special [f!]
-  (if (contains? @special-motions f!)
-    (swap! special-motions disj f!)
-    (swap! special-motions conj f!)))
+  (if (contains? @special-behaviors f!)
+    (swap! special-behaviors disj f!)
+    (swap! special-behaviors conj f!)))
 
 (defn add-ball! []
   (swap! balls conj
@@ -59,7 +59,8 @@
 (defn clear-balls! []
   (swap! balls empty))
 
-;; defining collision primitives -- these helper functions are all pure  
+;; defining collision primitives -- these helper functions are all pure.
+;; 'this-ball' and 'that-ball' here are the underlying immutable values.
 (defn get-delta-vel [this-ball that-ball]
     [(- (:x (:vel that-ball)) (:x (:vel this-ball)))
      (- (:y (:vel that-ball)) (:y (:vel this-ball)))])
@@ -110,7 +111,7 @@
   
 (def nudge 1.1)
 
-;; collision logic --- input balls here are the mutable atoms 
+;; collision logic --- now the input balls are the mutable atoms 
 (defn collide! 
   ([ball]
    (let [this-ball ball]
@@ -157,7 +158,7 @@
 (defn move-straight! [b] (swap! b assoc :pos (add-points (:pos @b) (:vel @b))))
 
 ;; Move in a curved path
-(defn move-curved! [b]
+(defn curve! [b]
   (let [theta (/ Math/PI 16)]
     (swap! b assoc :vel
       (Point. 
@@ -165,7 +166,7 @@
         (+ (* (:y (:vel @b)) (Math/cos theta)) (* (:x (:vel @b)) (Math/sin theta)))))))
 
 ;; Change color of ball, at some period n * thread sleep time
-(defn move-color-shift! [b]
+(defn color-shift! [b]
   (if (= 0 @time-counter)
     (swap! b assoc :color (rand-color))))
 
@@ -185,11 +186,11 @@
 (def curve-balls-button
   (doto (JButton. "Curve")
     (.addActionListener (proxy [ActionListener] []
-      (actionPerformed [e] (swap-in-special move-curved!))))))
+      (actionPerformed [e] (swap-in-special curve!))))))
 (def color-shift-button
   (doto (JButton. "Colorshift")
     (.addActionListener (proxy [ActionListener] []
-      (actionPerformed [e] (swap-in-special move-color-shift!))))))
+      (actionPerformed [e] (swap-in-special color-shift!))))))
 (def collide-balls-button
   (doto (JButton. "Collide")
     (.addActionListener (proxy [ActionListener] []
@@ -252,8 +253,8 @@
 (defn update! [ball]
   (dosync 
     (move-straight! ball)
-    (doseq [speci-m! @special-motions]
-      (speci-m! ball))
+    (doseq [special-behavior! @special-behaviors]
+      (special-behavior! ball))
     (bounce! ball)))
 
 ;; painting and panels
@@ -306,18 +307,4 @@
   (future (start-action-loop)))
 
 
-        
-   
-
-
-  
-
-
-
-
-
-
-
-
-
-
+ 
