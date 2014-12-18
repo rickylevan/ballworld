@@ -6,7 +6,9 @@
   (:import  [java.awt.event ActionListener KeyListener KeyEvent])
   (:import  [java.awt.Color]))
 
-
+;; http://stackoverflow.com/questions/3636364/can-i-clean-the-repl
+;; trying to purge existing state for a fresh run with a new -main call
+;; (map #(ns-unmap *ns* %) (keys (ns-interns *ns*))) 
 
 (defrecord Point [x y])
 (defrecord Ball [pos vel rad color])
@@ -38,7 +40,7 @@
 
 (defn rand-color [] 
   (let [rand-val (fn [] (int (* 256 (Math/random))))]
-    (Color. (rand-val) (rand-val) (rand-val))))
+    (java.awt.Color. (rand-val) (rand-val) (rand-val))))
 
 (defn rand-vel []
   ;; right now numbers are heuristic. No units
@@ -57,7 +59,6 @@
   (if (contains? @special-motions f!)
     (swap! special-motions disj f!)
     (swap! special-motions conj f!)))
-
 
 (defn add-ball! []
   (swap! balls conj
@@ -88,7 +89,6 @@
     (swap! b assoc :color (rand-color))))
 
 
-
 (def main-panel (proxy [JPanel] []
          (paintComponent [g]
            (proxy-super paintComponent g)
@@ -96,35 +96,31 @@
              (.setColor g (:color @ball))
              (paint-ball ball g)))))
 
-
+;; buttons
 (def add-ball-button
   (doto (JButton. "Add")
     (.addActionListener
       (proxy [ActionListener] []
         (actionPerformed [e]
           (add-ball!))))))
-
 (def clear-balls-button
   (doto (JButton. "Clear")
     (.addActionListener
       (proxy [ActionListener] []
         (actionPerformed [e]
           (clear-balls!))))))
-
 (def pause-button
   (doto (JButton. "Pause")
     (.addActionListener
       (proxy [ActionListener] []
         (actionPerformed [e]
           (switch-timeflow!))))))
-
 (def curve-balls-button
   (doto (JButton. "Curve")
     (.addActionListener
       (proxy [ActionListener] []
         (actionPerformed [e]
           (swap-in-special move-curved!))))))
-
 (def color-shift-button
   (doto (JButton. "Colorshift")
     (.addActionListener
@@ -198,33 +194,28 @@
     (bounce! ball)))
 
 
+
+(def main-frame (JFrame. "Ballworld"))
+(doto main-frame
+  (.add control-panel java.awt.BorderLayout/NORTH)
+  (.add main-panel java.awt.BorderLayout/CENTER)
+  (.setSize 600 600))
+
+(defn refresh [] (javax.swing.SwingUtilities/invokeLater #(.repaint main-panel)))
+(def gui-refresh-loop '(loop [] (refresh) (Thread/sleep 30) (recur)))
+(def action-loop '(loop [] (if (time-flowing?)
+                   (do
+                    (doseq [ball @balls] (update! ball))
+                    (swap! time-counter-state #(mod (inc %) time-period))))
+                 (Thread/sleep 15)
+                 (recur)))
+
+
 (defn -main []
-
-  ;; http://stackoverflow.com/questions/3636364/can-i-clean-the-repl
-  ;; trying to purge existing state for a fresh run with a new -main call
-  ;; (map #(ns-unmap *ns* %) (keys (ns-interns *ns*))) 
-
-  (def main-frame (JFrame. "Ballworld"))
-  (doto main-frame
-    (.add control-panel java.awt.BorderLayout/NORTH)
-    (.add main-panel java.awt.BorderLayout/CENTER)
-    (.setSize 600 600)
-    (.show))
-  (defn refresh [] (javax.swing.SwingUtilities/invokeLater #(.repaint main-panel)))
+  (.show main-frame)
   (start-timeflow!)
-
-
-
-
-  ;; refresh loop
-  (future (loop [] (refresh) (Thread/sleep 30) (recur)))
-  ;; action loop
-  (future (loop [] (if (time-flowing?)
-                     (do
-                      (doseq [ball @balls] (update! ball))
-                      (swap! time-counter-state #(mod (inc %) time-period))))
-                   (Thread/sleep 15)
-                   (recur)))
+  (future gui-refresh-loop)
+  (future action-loop)
 )
 
 
