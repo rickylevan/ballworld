@@ -7,13 +7,11 @@
 ;; trying to purge existing state for a fresh run with a new -main call
 ;; (map #(ns-unmap *ns* %) (keys (ns-interns *ns*))) 
 
+;; structs
 (defrecord Point [x y])
 (defrecord Ball [pos vel rad color])
-(defn add-points [p1 p2] 
-  (Point. (+ (:x p1) (:x p2)) (+ (:y p1) (:y p2))))
 
-;; playing with time primitives. These will be useful later
-;; in adding control features
+;; time primitives
 (def timeflow-bool (atom false))
 (defn time-flowing? [] @timeflow-bool)
 (defn resume-timeflow! [] (swap! timeflow-bool (fn [_] true)))
@@ -21,26 +19,21 @@
 (defn start-timeflow! [] (resume-timeflow!))
 (defn switch-timeflow! [] (swap! timeflow-bool (fn [b] (not b))))
 
-;; helpers for color change
+;; helpers for color shifting
 (def time-period 3)
 (def time-counter-state (atom 0))
 
 (defn flip-sign [x] (* -1 x))
+(defn add-points [p1 p2] 
+  (Point. (+ (:x p1) (:x p2)) (+ (:y p1) (:y p2))))
 (def default-radius 30)
 
 
-(defn paint-ball [ball g] 
-  (.fillOval g (- (:x (:pos @ball)) (:rad @ball)) 
-               (- (:y (:pos @ball)) (:rad @ball))
-               (* 2 (:rad @ball)) 
-               (* 2 (:rad @ball))))
 
 (defn rand-color [] 
   (let [rand-val (fn [] (int (* 256 (Math/random))))]
-    (java.awt.Color. (rand-val) (rand-val) (rand-val))))
-
+    (Color. (rand-val) (rand-val) (rand-val))))
 (defn rand-vel []
-  ;; right now numbers are heuristic. No units
   (- 12 (* 24 (Math/random))))
 
 (def ball1 (atom (Ball. (Point. 80 80) (Point. 8.0 3.7) default-radius Color/red)))
@@ -65,7 +58,6 @@
 (defn clear-balls! []
   (swap! balls empty))
 
-
 ;; Move as instructed by Newton's first
 (defn move-straight! [b] (swap! b assoc :pos (add-points (:pos @b) (:vel @b))))
 
@@ -79,19 +71,10 @@
         (+ (* (:y (:vel @b)) (Math/cos theta))
            (* (:x (:vel @b)) (Math/sin theta)))))))
 
-
-;; Change color
+;; Change color of ball, at some period n * thread sleep time
 (defn move-color-shift! [b]
   (if (= 0 @time-counter-state)
     (swap! b assoc :color (rand-color))))
-
-
-(def main-panel (proxy [JPanel] []
-         (paintComponent [g]
-           (proxy-super paintComponent g)
-           (doseq [ball @balls]
-             (.setColor g (:color @ball))
-             (paint-ball ball g)))))
 
 ;; buttons
 (def add-ball-button
@@ -125,20 +108,14 @@
         (actionPerformed [e]
           (swap-in-special move-color-shift!))))))
 
-(def control-panel
-  (doto (JPanel.)
-    (.setBackground java.awt.Color/lightGray)
-    (.add add-ball-button)
-    (.add clear-balls-button)
-    (.add curve-balls-button)
-    (.add color-shift-button)
-    (.add pause-button)))
-  
-
-;; trying to stop this odd bug of a ball wiggling against the edge
+;; plug to stop odd bug of a ball wiggling against the frame's edge
 (def bump 5) 
 
-;; There should be a way of generalizing these *-bounce! commands. Very similar ideas
+;; so it's defined for the .getBounds methods below -- of course changes later
+(def main-panel)
+
+;; Bounce transitions. There should be a way to generalize these
+;; very similar code blocks
 (defn no-bounce! [ball])
 (defn right-bounce! [ball]
   (do
@@ -165,8 +142,8 @@
     (let [dy (Math/abs (- (:y (:pos @ball)) (:rad @ball)))]
       (swap! ball assoc :pos (Point. (:x (:pos @ball)) (+ (:y (:pos @ball) (* 2 dy)) bump))))))
 
-;; Find if part (or all) of the ball is outside of the panel. Return the side
-;; it has fallen off, or nil if it is fully inside the panel
+;; Find if part (or all) of the ball is outside of the panel. Return the function
+;; corresponding to the side (possibly none) that it has fallen off
 (defn get-bounce-fun [ball]
   (let [shrunk-bounds
         {:x      (:rad @ball)
@@ -183,14 +160,36 @@
 (defn bounce! [ball]
   ((get-bounce-fun ball) ball))
 
+;; core ball behavior through time
 (defn update! [ball]
   (dosync 
     (move-straight! ball)
-    (doseq [sm! @special-motions]
-      (sm! ball))
+    (doseq [speci-m! @special-motions]
+      (speci-m! ball))
     (bounce! ball)))
 
+;; painting and panels
+(defn paint-ball [ball g] 
+  (.fillOval g (- (:x (:pos @ball)) (:rad @ball)) 
+               (- (:y (:pos @ball)) (:rad @ball))
+               (* 2 (:rad @ball)) 
+               (* 2 (:rad @ball))))
 
+(def main-panel (proxy [JPanel] []
+         (paintComponent [g]
+           (proxy-super paintComponent g)
+           (doseq [ball @balls]
+             (.setColor g (:color @ball))
+             (paint-ball ball g)))))
+
+(def control-panel
+  (doto (JPanel.)
+    (.setBackground Color/lightGray)
+    (.add add-ball-button)
+    (.add clear-balls-button)
+    (.add curve-balls-button)
+    (.add color-shift-button)
+    (.add pause-button)))
 
 (def main-frame (JFrame. "Ballworld"))
 (doto main-frame
@@ -198,6 +197,10 @@
   (.add main-panel java.awt.BorderLayout/CENTER)
   (.setSize 600 600))
 
+
+
+
+;; main loops
 (defn refresh [] (javax.swing.SwingUtilities/invokeLater #(.repaint main-panel)))
 (defn start-gui-refresh-loop [] (loop [] (refresh) (Thread/sleep 30) (recur)))
 (defn start-action-loop [] (loop [] (if (time-flowing?)
