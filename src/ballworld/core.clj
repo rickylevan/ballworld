@@ -22,6 +22,10 @@
 (defn start-timeflow! [] (resume-timeflow!))
 (defn switch-timeflow! [] (swap! timeflow-bool (fn [b] (not b))))
 
+;; helpers for color change
+(def time-period 3)
+(def time-counter-state (atom 0))
+
 (defn flip-sign [x] (* -1 x))
 (def default-radius 30)
 
@@ -78,6 +82,13 @@
            (* (:x (:vel @b)) (Math/sin theta)))))))
 
 
+;; Change color
+(defn move-color-shift! [b]
+  (if (= 0 @time-counter-state)
+    (swap! b assoc :color (rand-color))))
+
+
+
 (def main-panel (proxy [JPanel] []
          (paintComponent [g]
            (proxy-super paintComponent g)
@@ -114,12 +125,20 @@
         (actionPerformed [e]
           (swap-in-special move-curved!))))))
 
+(def color-shift-button
+  (doto (JButton. "Colorshift")
+    (.addActionListener
+      (proxy [ActionListener] []
+        (actionPerformed [e]
+          (swap-in-special move-color-shift!))))))
+
 (def control-panel
   (doto (JPanel.)
     (.setBackground java.awt.Color/lightGray)
     (.add add-ball-button)
     (.add clear-balls-button)
     (.add curve-balls-button)
+    (.add color-shift-button)
     (.add pause-button)))
   
 
@@ -185,24 +204,25 @@
   ;; trying to purge existing state for a fresh run with a new -main call
   ;; (map #(ns-unmap *ns* %) (keys (ns-interns *ns*))) 
 
-  (def main-frame (JFrame.))
+  (def main-frame (JFrame. "Ballworld"))
   (doto main-frame
     (.add control-panel java.awt.BorderLayout/NORTH)
     (.add main-panel java.awt.BorderLayout/CENTER)
-    (.setSize 400 400)
+    (.setSize 600 600)
     (.show))
   (defn refresh [] (javax.swing.SwingUtilities/invokeLater #(.repaint main-panel)))
   (start-timeflow!)
+
+
+
 
   ;; refresh loop
   (future (loop [] (refresh) (Thread/sleep 30) (recur)))
   ;; action loop
   (future (loop [] (if (time-flowing?)
-                     (doseq [ball @balls] (update! ball)))
-                     ;;(do
-                      ;; (update! ball1)
-                       ;;(update! ball2)
-                       ;;(update! ball3)))
+                     (do
+                      (doseq [ball @balls] (update! ball))
+                      (swap! time-counter-state #(mod (inc %) time-period))))
                    (Thread/sleep 15)
                    (recur)))
 )
