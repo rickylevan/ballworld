@@ -65,10 +65,8 @@
   (let [theta (/ Math/PI 16)]
     (swap! b assoc :vel
       (Point. 
-        (- (* (:x (:vel @b)) (Math/cos theta))
-           (* (:y (:vel @b)) (Math/sin theta)))
-        (+ (* (:y (:vel @b)) (Math/cos theta))
-           (* (:x (:vel @b)) (Math/sin theta)))))))
+        (- (* (:x (:vel @b)) (Math/cos theta)) (* (:y (:vel @b)) (Math/sin theta)))
+        (+ (* (:y (:vel @b)) (Math/cos theta)) (* (:x (:vel @b)) (Math/sin theta)))))))
 
 ;; Change color of ball, at some period n * thread sleep time
 (defn move-color-shift! [b]
@@ -78,34 +76,24 @@
 ;; buttons
 (def add-ball-button
   (doto (JButton. "Add")
-    (.addActionListener
-      (proxy [ActionListener] []
-        (actionPerformed [e]
-          (add-ball!))))))
+    (.addActionListener (proxy [ActionListener] []
+      (actionPerformed [e] (add-ball!))))))
 (def clear-balls-button
   (doto (JButton. "Clear")
-    (.addActionListener
-      (proxy [ActionListener] []
-        (actionPerformed [e]
-          (clear-balls!))))))
+    (.addActionListener (proxy [ActionListener] []
+      (actionPerformed [e] (clear-balls!))))))
 (def pause-button
   (doto (JButton. "Pause")
-    (.addActionListener
-      (proxy [ActionListener] []
-        (actionPerformed [e]
-          (switch-timeflow!))))))
+    (.addActionListener (proxy [ActionListener] []
+      (actionPerformed [e] (switch-timeflow!))))))
 (def curve-balls-button
   (doto (JButton. "Curve")
-    (.addActionListener
-      (proxy [ActionListener] []
-        (actionPerformed [e]
-          (swap-in-special move-curved!))))))
+    (.addActionListener (proxy [ActionListener] []
+      (actionPerformed [e] (swap-in-special move-curved!))))))
 (def color-shift-button
   (doto (JButton. "Colorshift")
-    (.addActionListener
-      (proxy [ActionListener] []
-        (actionPerformed [e]
-          (swap-in-special move-color-shift!))))))
+    (.addActionListener(proxy [ActionListener] []
+      (actionPerformed [e] (swap-in-special move-color-shift!))))))
 
 ;; plug to stop odd bug of a ball wiggling against the frame's edge
 (def bump 5) 
@@ -203,7 +191,7 @@
   (loop [] (if (time-flowing?)
     (do
       (doseq [ball @balls] (update! ball))
-      ;; loop time steps modulo time-period (to slow color flashing)
+      ;; count time steps modulo time-period (used to slow color flashing)
       (swap! time-counter #(mod (inc %) time-period))))
     (Thread/sleep 15)
     (recur)))
@@ -214,7 +202,6 @@
   (start-timeflow!)
   (future (start-gui-refresh-loop))
   (future (start-action-loop)))
-
 
 
 ;; defining collision primitives
@@ -239,7 +226,76 @@
           (- (Math/pow (m/dot dvel dpos) 2)
              (* (m/dot dvel dvel)
                 (- (m/dot dpos dpos) (Math/pow R 2))))]
-      )))
+      (/ (+ (flip-sign (m/dot dvel dpos))
+            (flip-sign (Math/sqrt physics-factor)))
+         (m/dot dvel dvel)))))
+
+(defn get-mass [ball] (Math/pow (:rad @ball) 2))
+
+(defn get-distance [this-ball that-ball]
+  (let [this-pos (:pos @this-ball) that-pos (:pos @that-ball)]
+    (m/distance [(:x this-pos) (:y this-pos)]
+                [(:x that-pos) (:y that-pos)])))
+
+(defn overlapping? [this-ball that-ball]
+  (< (get-distance this-ball that-ball)
+     (+ (:rad @this-ball) (:rad @that-ball))))  
+
+(defn get-reduced-mass [this-ball that-ball]
+  (let [this-mass (Math/pow (:rad @this-ball) 2)
+        that-mass (Math/pow (:rad @that-ball) 2)]
+    (/ (* this-mass that-mass) (+ this-mass that-mass))))
+
+(defn get-impulse [this-ball that-ball]
+  (let [nx (/ (- (:x (:pos @that-ball)) (:x (:pos @this-ball)))
+              (get-distance this-ball that-ball))
+        ny (/ (- (:y (:pos @that-ball)) (:y (:pos @that-ball)))
+              (get-distance this-ball that-ball))]
+    (let [dvn (+ (* nx (- (:x (:vel @that-ball)) (:x (:vel @this-ball))))
+                 (* ny (- (:y (:vel @that-ball)) (:y (:vel @that-ball)))))
+          rm (get-reduced-mass this-ball that-ball)]
+      (Point. (* 2 rm dvn nx) (* 2 rm dvn ny)))))
+  
+(def nudge 1.1)
+
+;; collision logic dependent on other ball locations
+(defn collide! 
+  ([ball]
+   (let [this-ball ball]
+     (doseq [that-ball (disj @balls this-ball)]
+       (if (overlapping? this-ball that-ball)
+         (collide! this-ball that-ball)))))
+  ([this-ball that-ball]
+   (let [this-new-vel 
+         (Point. (+ (:x (:vel this-ball))
+                    (/ (:x (get-impulse this-ball that-ball)) (get-mass this-ball)))
+                 (+ (:y (:vel this-ball))
+                    (/ (:y (get-impulse this-ball that-ball)) (get-mass this-ball))))
+         that-new-vel
+         (Point. (+ (:x (:vel that-ball))
+                    (/ (:x (get-impulse that-ball this-ball)) (get-mass that-ball)))
+                 (+ (:y (:vel that-ball))
+                    (/ (:y (get-impulse that-ball this-ball)) (get-mass that-ball))))
+         tstar (get-collision-time this-ball that-ball)]
+     ;; rewind time at old velocity, and redo time with new velocity
+     (let [this-new-pos nil]
+
+
+
+     (doseq []
+       (swap! this-ball assoc :vel this-new-vel)
+       (swap! that-ball assoc :vel that-new-vel))))))
+      ;; (swap! this-ball assoc :pos this-new-pos)
+       ;;(swap! that-ball assoc :pos that-new-pos))))))
+
+        
+   
+
+
+  
+
+
+
 
 
 
