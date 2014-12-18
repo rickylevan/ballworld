@@ -202,10 +202,11 @@
   (.setSize 600 600))
 
 (defn refresh [] (javax.swing.SwingUtilities/invokeLater #(.repaint main-panel)))
-(def gui-refresh-loop '(loop [] (refresh) (Thread/sleep 30) (recur)))
-(def action-loop '(loop [] (if (time-flowing?)
+(defn start-gui-refresh-loop [] (loop [] (refresh) (Thread/sleep 30) (recur)))
+(defn start-action-loop [] (loop [] (if (time-flowing?)
                    (do
                     (doseq [ball @balls] (update! ball))
+                    ;; circle time steps mod n --- used to slow color flashing
                     (swap! time-counter-state #(mod (inc %) time-period))))
                  (Thread/sleep 15)
                  (recur)))
@@ -214,9 +215,8 @@
 (defn -main []
   (.show main-frame)
   (start-timeflow!)
-  (future gui-refresh-loop)
-  (future action-loop)
-)
+  (future (start-gui-refresh-loop))
+  (future (start-action-loop)))
 
 
 
