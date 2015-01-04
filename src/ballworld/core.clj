@@ -130,28 +130,27 @@
                     (/ (:x (get-impulse @that-ball @this-ball)) (get-mass @that-ball)))
                  (+ (:y (:vel @that-ball))
                     (/ (:y (get-impulse @that-ball @this-ball)) (get-mass @that-ball))))
-         tstar (get-collision-time @this-ball @that-ball)]
-     ;; rewind time at old velocity to negative time tstar, and redo time at new velocity
-     (let [this-new-pos
-           (Point. (+ (:x (:pos @this-ball)) 
-                      (* tstar (:x (:vel @this-ball)))
-                      (flip-sign (* nudge tstar (:x this-new-vel))))
-                   (+ (:y (:pos @this-ball)) 
-                      (* tstar (:y (:vel @this-ball)))
-                      (flip-sign (* nudge tstar (:y this-new-vel)))))
-           that-new-pos
-           (Point. (+ (:x (:pos @that-ball)) 
-                      (* tstar (:x (:vel @that-ball)))
-                      (flip-sign (* nudge tstar (:x that-new-vel))))
-                   (+ (:y (:pos @that-ball)) 
-                      (* tstar (:y (:vel @that-ball)))
-                      (flip-sign (* nudge tstar (:y that-new-vel)))))]
-
+         tstar (get-collision-time @this-ball @that-ball)
+         ;; rewind time at old velocity to negative time tstar, and redo time at new velocity
+         this-new-pos
+         (Point. (+ (:x (:pos @this-ball)) 
+                    (* tstar (:x (:vel @this-ball)))
+                    (flip-sign (* nudge tstar (:x this-new-vel))))
+                 (+ (:y (:pos @this-ball)) 
+                    (* tstar (:y (:vel @this-ball)))
+                    (flip-sign (* nudge tstar (:y this-new-vel)))))
+         that-new-pos
+         (Point. (+ (:x (:pos @that-ball)) 
+                    (* tstar (:x (:vel @that-ball)))
+                    (flip-sign (* nudge tstar (:x that-new-vel))))
+                 (+ (:y (:pos @that-ball)) 
+                    (* tstar (:y (:vel @that-ball)))
+                    (flip-sign (* nudge tstar (:y that-new-vel)))))]
      (doseq []
        (swap! this-ball assoc :vel this-new-vel)
        (swap! that-ball assoc :vel that-new-vel)
        (swap! this-ball assoc :pos this-new-pos)
-       (swap! that-ball assoc :pos that-new-pos))))))
+       (swap! that-ball assoc :pos that-new-pos)))))
 
 
 ;; Move as instructed by Newton's first
@@ -200,8 +199,7 @@
 ;; plug to stop odd bug of a ball wiggling against the frame's edge
 (def bump 5) 
 
-;; so it's defined for the .getBounds methods below -- of course changes later
-(def main-panel)
+(declare main-panel)
 
 ;; Bounce transitions. There should be a way to generalize these very similar code blocks
 (defn no-bounce! [ball])
@@ -232,6 +230,7 @@
 
 ;; Find if part (or all) of the ball is outside of the panel. Return the function
 ;; corresponding to the side (possibly none) that it has fallen off
+;; Impure in its dependence on the bounds
 (defn get-bounce-fun [ball]
   (let [shrunk-bounds
         {:x      (:rad @ball)
@@ -250,7 +249,7 @@
 
 ;; core ball behavior through time
 (defn update! [ball]
-  (dosync 
+  (dosync
     (move-straight! ball)
     (doseq [special-behavior! @special-behaviors]
       (special-behavior! ball))
@@ -290,11 +289,12 @@
 (defn refresh [] (javax.swing.SwingUtilities/invokeLater #(.repaint main-panel)))
 (defn start-gui-refresh-loop [] (loop [] (refresh) (Thread/sleep 30) (recur)))
 (defn start-action-loop [] 
-  (loop [] (if (time-flowing?)
-    (do
-      (doseq [ball @balls] (update! ball))
-      ;; count time steps modulo time-period (used to slow color flashing)
-      (swap! time-counter #(mod (inc %) time-period))))
+  (loop [] 
+    (if (time-flowing?)
+      (do
+        (doseq [ball @balls] (update! ball))
+        ;; count time steps modulo time-period (used to slow color flashing)
+        (swap! time-counter #(mod (inc %) time-period))))
     (Thread/sleep 15)
     (recur)))
 
@@ -306,4 +306,3 @@
   (future (start-action-loop)))
 
 
- 
